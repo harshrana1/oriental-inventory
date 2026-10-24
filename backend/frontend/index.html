@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Oriental Inventory</title>
+<style>
+:root{--bg:#eef2f1;--panel:#fff;--ink:#17211f;--mute:#5d6b68;--line:#d3dcda;--acc:#12403c;--brass:#a8741a;--bad:#b3261e;--bad-bg:#fbe9e7}
+@media(prefers-color-scheme:dark){:root{--bg:#121816;--panel:#1b2421;--ink:#e8efed;--mute:#9db0ac;--line:#2f3d39;--acc:#6fc2b6;--brass:#e0b04f;--bad:#ff8a80;--bad-bg:#3a1f1c}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,Segoe UI,sans-serif}
+header{background:var(--acc);color:#fff;padding:14px 20px;display:flex;gap:24px;align-items:center;flex-wrap:wrap}
+@media(prefers-color-scheme:dark){header{color:#0d1311}}
+h1{font:600 22px Georgia,serif;margin:0}
+nav button{background:none;border:0;color:inherit;font:inherit;padding:6px 12px;border-radius:6px;cursor:pointer;opacity:.75}
+nav button.on{opacity:1;background:rgba(255,255,255,.18);font-weight:600}
+main{max-width:1100px;margin:20px auto;padding:0 16px}
+section{display:none}section.on{display:block}
+.bar{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+input,select{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--ink);min-width:0}
+button.b{font:inherit;padding:8px 14px;border-radius:6px;border:1px solid var(--acc);background:var(--acc);color:#fff;cursor:pointer}
+@media(prefers-color-scheme:dark){button.b{color:#0d1311}}
+button.g{background:none;color:var(--acc)}button.d{border-color:var(--bad);background:none;color:var(--bad)}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+.wrap{overflow-x:auto;background:var(--panel);border:1px solid var(--line);border-radius:8px}
+table{width:100%;border-collapse:collapse}
+th,td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-weight:600;color:var(--mute);font-size:13px}
+td.n,th.n{text-align:right}
+tr.low td{background:var(--bad-bg)}tr.low td.st{color:var(--bad);font-weight:700}
+.sm{padding:3px 9px;font-size:13px}
+.empty{padding:28px;text-align:center;color:var(--mute)}
+dialog{border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--ink);width:min(640px,94vw);padding:20px}
+dialog::backdrop{background:rgba(0,0,0,.45)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+label{display:flex;flex-direction:column;font-size:13px;color:var(--mute);gap:3px}
+.tot{text-align:right;margin-top:12px;font-size:15px}.tot b{font:600 20px Georgia,serif}
+#toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:8px;display:none}
+</style>
+</head>
+<body>
+<header><h1>Oriental Inventory</h1>
+<nav><button data-t="inv" class="on">Books</button><button data-t="bill">New bill</button><button data-t="his">Bills</button></nav></header>
+<main>
+<section id="inv" class="on">
+ <div class="bar"><input id="q" placeholder="Search title, author, ISBN" style="flex:1;min-width:200px">
+ <button class="b g" id="lowBtn">Low stock only</button><button class="b" id="addBtn">Add book</button></div>
+ <div class="wrap"><table><thead><tr><th>Title</th><th>Author</th><th>ISBN</th><th class="n">Price</th><th class="n">GST %</th><th class="n">Stock</th><th></th></tr></thead><tbody id="rows"></tbody></table></div>
+</section>
+<section id="bill">
+ <div class="grid" style="margin-bottom:12px">
+  <label>Customer / college name<input id="cn"></label><label>Address<input id="ca"></label>
+  <label>Phone<input id="cp"></label><label>Customer GSTIN (optional)<input id="cg"></label>
+  <label>Order no.<input id="on"></label><label>Order date<input id="od" type="date"></label></div>
+ <div class="grid" style="margin-bottom:12px">
+  <label>$ = Rs<input id="r_USD" type="number" step="any" value="59"></label>
+  <label>£ = Rs<input id="r_GBP" type="number" step="any" value="92"></label>
+  <label>€ = Rs<input id="r_EUR" type="number" step="any" value="74.2"></label>
+  <label>DM = Rs<input id="r_DM" type="number" step="any" value="38"></label>
+  <label>Default discount %<input id="dd" type="number" step="any" value="30"></label></div>
+ <div class="bar"><input id="bq" list="bl" placeholder="Type book title, then pick" style="flex:1;min-width:200px"><input id="bqty" type="number" min="1" value="1" style="width:80px"><input id="bunit" value="cps" style="width:80px" aria-label="Unit"><button class="b" id="addLine">Add to bill</button></div>
+ <datalist id="bl"></datalist>
+ <div class="wrap"><table><thead><tr><th>Book</th><th class="n">Qty</th><th>Cur</th><th class="n">Price</th><th class="n">Disc %</th><th class="n">Net (Rs)</th><th></th></tr></thead><tbody id="lines"></tbody></table></div>
+ <div class="tot" id="tot"></div>
+ <div class="bar" style="justify-content:flex-end;margin-top:12px"><button class="b" id="save">Save bill</button></div>
+</section>
+<section id="his"><div class="wrap"><table><thead><tr><th>No.</th><th>Date</th><th>Customer</th><th class="n">Total</th><th></th></tr></thead><tbody id="hrows"></tbody></table></div></section>
+</main>
+<dialog id="dlg"><form method="dialog" id="f"><h2 id="dt" style="margin-top:0;font-family:Georgia,serif"></h2><div class="grid" id="fields"></div>
+<div class="bar" style="justify-content:flex-end;margin:16px 0 0"><button type="button" class="b g" id="cancel">Cancel</button><button type="submit" class="b">Save book</button></div></form></dialog>
+<div id="toast"></div>
+<script>
+const API="http://localhost:5000/api";
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const money=n=>"₹"+Number(n||0).toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2});
+let books=[],lowOnly=false,editId=null,cart=[];
+const FIELDS=[["title","Title *"],["author","Author"],["publisher","Publisher"],["edition","Edition"],["subject","Subject"],["language","Language"],["itemType","Item type"],["isbn","ISBN"],["pages","Pages","number"],["volumes","Volumes"],["hsn","HSN"],["gstRate","GST %","number"],["currency","Currency"],["listPrice","List price *","number"],["stock","Stock","number"],["lowStockLimit","Low stock limit","number"]];
+function toast(m){const t=$("#toast");t.textContent=m;t.style.display="block";setTimeout(()=>t.style.display="none",2600)}
+async function api(p,o={}){
+ try{const r=await fetch(API+p,{headers:{"Content-Type":"application/json"},...o});const d=await r.json();if(!r.ok)throw new Error(d.error||"Error");return d}
+ catch(e){toast(e.message==="Failed to fetch"?"Server nahi mila. Backend chalu hai?":e.message);throw e}}
+document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{
+ document.querySelectorAll("nav button,section").forEach(x=>x.classList.remove("on"));
+ b.classList.add("on");$("#"+b.dataset.t).classList.add("on");
+ if(b.dataset.t==="his")loadBills();if(b.dataset.t==="bill")loadBooks()});
+async function loadBooks(){
+ const q=$("#q").value.trim();
+ books=lowOnly?await api("/books/low-stock"):(await api("/books?limit=500&search="+encodeURIComponent(q))).books;
+ $("#rows").innerHTML=books.length?books.map(b=>`<tr class="${b.stock<=b.lowStockLimit?"low":""}"><td>${esc(b.title)}</td><td>${esc(b.author)}</td><td>${esc(b.isbn)}</td><td class="n">${money(b.listPrice)}</td><td class="n">${b.gstRate}</td><td class="n st">${b.stock}</td>
+ <td><button class="b g sm" data-a="in" data-id="${b._id}">+</button> <button class="b g sm" data-a="out" data-id="${b._id}">−</button> <button class="b g sm" data-a="edit" data-id="${b._id}">Edit</button> <button class="b d sm" data-a="del" data-id="${b._id}">Delete</button></td></tr>`).join(""):`<tr><td colspan="7" class="empty">No books yet. Press "Add book" to enter your first one.</td></tr>`;
+ $("#bl").innerHTML=books.map(b=>`<option value="${esc(b.title)}">`).join("")}
+$("#q").oninput=()=>{lowOnly=false;loadBooks()};
+$("#lowBtn").onclick=()=>{lowOnly=!lowOnly;$("#lowBtn").textContent=lowOnly?"Show all":"Low stock only";loadBooks()};
+$("#rows").onclick=async e=>{
+ const b=e.target.closest("button");if(!b)return;const id=b.dataset.id,a=b.dataset.a;
+ if(a==="edit")return openForm(books.find(x=>x._id===id));
+ if(a==="del"){if(confirm("Delete this book?")){await api("/books/"+id,{method:"DELETE"});toast("Deleted");loadBooks()}return}
+ const n=Number(prompt(a==="in"?"Kitni copies aayi?":"Kitni copies bikin?","1"));if(!n)return;
+ await api(`/books/${id}/stock`,{method:"PATCH",body:JSON.stringify({change:a==="in"?n:-n})});toast("Stock updated");loadBooks()};
+function openForm(b){
+ editId=b?b._id:null;$("#dt").textContent=b?"Edit book":"Add book";
+ $("#fields").innerHTML=FIELDS.map(([k,l,t])=>`<label>${l}<input name="${k}" type="${t||"text"}" step="any" value="${esc(b?b[k]:"")}" ${l.includes("*")?"required":""}></label>`).join("");
+ if(!b){["language:English","itemType:Book","hsn:4901","gstRate:0","currency:INR","stock:0","lowStockLimit:5"].forEach(p=>{const[k,v]=p.split(":");$(`[name=${k}]`).value=v})}
+ $("#dlg").showModal()}
+$("#addBtn").onclick=()=>openForm();$("#cancel").onclick=()=>$("#dlg").close();
+$("#f").onsubmit=async e=>{e.preventDefault();const d={};
+ FIELDS.forEach(([k,,t])=>{const v=$(`[name=${k}]`).value.trim();if(v!=="")d[k]=t==="number"?Number(v):v});
+ await api(editId?"/books/"+editId:"/books",{method:editId?"PUT":"POST",body:JSON.stringify(d)});
+ $("#dlg").close();toast(editId?"Book updated":"Book added");loadBooks()};
+// Billing
+const SYM={INR:"Rs",USD:"$",GBP:"£",EUR:"€",DM:"DM"};
+const RT=()=>({INR:1,USD:+$("#r_USD").value||0,GBP:+$("#r_GBP").value||0,EUR:+$("#r_EUR").value||0,DM:+$("#r_DM").value||0});
+function calc(){const R=RT();let sub=0,gst=0;
+ cart.forEach(l=>{l.net=l.price*(R[l.currency]||0)*l.qty*(1-l.disc/100);sub+=l.net;gst+=l.net*l.gstRate/100});
+ const raw=sub+gst,tot=Math.round(raw);return{sub,gst,tot,ro:tot-raw}}
+function drawCart(){const t=calc();
+ $("#lines").innerHTML=cart.length?cart.map((l,i)=>`<tr><td>${esc(l.title)}</td><td class="n">${l.qty} ${esc(l.unit)}</td><td>${SYM[l.currency]||esc(l.currency)}</td><td class="n">${l.price}</td><td class="n"><input type="number" step="any" min="0" max="100" value="${l.disc}" data-d="${i}" style="width:70px" aria-label="Discount %"></td><td class="n">${money(l.net)}</td><td><button class="b d sm" data-i="${i}">Remove</button></td></tr>`).join(""):`<tr><td colspan="7" class="empty">Search a book above and add it to this bill.</td></tr>`;
+ $("#tot").innerHTML=`Subtotal ${money(t.sub)} &nbsp; GST ${money(t.gst)} &nbsp; Round off ${t.ro.toFixed(2)}<br>Total <b>${money(t.tot)}</b>`}
+$("#lines").onclick=e=>{const b=e.target.closest("button");if(b){cart.splice(b.dataset.i,1);drawCart()}};
+$("#lines").onchange=e=>{const i=e.target.dataset.d;if(i!=null){cart[i].disc=Math.min(100,Math.max(0,+e.target.value||0));drawCart()}};
+["r_USD","r_GBP","r_EUR","r_DM"].forEach(id=>$("#"+id).oninput=drawCart);
+$("#addLine").onclick=()=>{
+ const b=books.find(x=>x.title===$("#bq").value),qty=Number($("#bqty").value);
+ if(!b)return toast("List mein se book chuno");if(!Number.isInteger(qty)||qty<1)return toast("Quantity galat hai");
+ const have=cart.filter(c=>c.book===b._id).reduce((s,c)=>s+c.qty,0);
+ if(have+qty>b.stock)return toast("Stock sirf "+b.stock+" hai");
+ cart.push({book:b._id,title:b.title,author:b.author,qty,unit:$("#bunit").value.trim()||"cps",currency:b.currency,price:b.listPrice,gstRate:b.gstRate,disc:+$("#dd").value||0});
+ $("#bq").value="";$("#bqty").value=1;drawCart()};
+$("#save").onclick=async()=>{
+ if(!$("#cn").value.trim())return toast("Customer ka naam likho");if(!cart.length)return toast("Bill mein koi book nahi hai");
+ const inv=await api("/invoices",{method:"POST",body:JSON.stringify({customerName:$("#cn").value.trim(),customerAddress:$("#ca").value.trim(),customerPhone:$("#cp").value.trim(),customerGstin:$("#cg").value.trim(),orderNo:$("#on").value.trim(),orderDate:$("#od").value,rates:RT(),items:cart.map(c=>({book:c.book,qty:c.qty,unit:c.unit,disc:c.disc}))})});
+ cart=[];["#cn","#ca","#cp","#cg","#on","#od"].forEach(s=>$(s).value="");drawCart();toast("Bill saved: "+inv.invoiceNo);loadBooks();printInv(inv)};
+// Bills
+async function loadBills(){
+ const list=await api("/invoices");window._inv=list;
+ $("#hrows").innerHTML=list.length?list.map((v,i)=>`<tr><td>${v.invoiceNo}</td><td>${new Date(v.date).toLocaleDateString("en-IN")}</td><td>${esc(v.customerName)}</td><td class="n">${money(v.total)}</td><td><button class="b g sm" data-i="${i}">Print</button></td></tr>`).join(""):`<tr><td colspan="5" class="empty">No bills yet. Create one from "New bill".</td></tr>`}
+$("#hrows").onclick=e=>{const b=e.target.closest("button");if(b)printInv(window._inv[b.dataset.i])};
+function printInv(v){
+ const SHOP={name:"Oriental Enterprises",tag:"Publishers, Book Distributors & Printers",addr:"31-B (2nd Floor), Rajpur Road, Dehradun-248001, Uttarakhand, India",ph:"0135-2654218, 09412992872",pan:"ABAPS9758A",gstin:"",bank:"Bank name, branch aur A/c No. yahan likho"};
+ const w=window.open("","_blank");if(!w)return toast("Pop-up allow karo, tab print khulega");
+ const d=x=>new Date(x).toLocaleDateString("en-IN"),r=v.rates||{};
+ w.document.write(`<title>${v.invoiceNo}</title><style>body{font:13px system-ui;margin:28px;color:#111}table{width:100%;border-collapse:collapse;margin-top:12px}th,td{border:1px solid #999;padding:4px 6px;text-align:left}.n{text-align:right}h1{font:600 26px Georgia,serif;margin:0}.c{text-align:center}</style>
+ <div class="c"><h1>${SHOP.name}</h1>${SHOP.tag}<br>${SHOP.addr}<br>Ph: ${SHOP.ph}${SHOP.gstin?"<br>GSTIN: "+SHOP.gstin:""}</div><hr>
+ <b>INVOICE # ${v.invoiceNo}</b> &nbsp; Dated ${d(v.date)}<br>To: <b>${esc(v.customerName)}</b><br>${esc(v.customerAddress||"")}${v.customerPhone?"<br>Ph: "+esc(v.customerPhone):""}${v.customerGstin?"<br>GSTIN: "+esc(v.customerGstin):""}${v.orderNo?"<br>Your Order No. "+esc(v.orderNo)+(v.orderDate?" dated "+d(v.orderDate):""):""}
+ <table><tr><th>Sr.</th><th>Particulars</th><th class="n">Qty</th><th>Cur.</th><th class="n">GOC</th><th class="n">Rate</th><th class="n">Price Rs.P</th><th class="n">Disc %</th><th class="n">Net Price</th></tr>
+ ${v.items.map((i,k)=>`<tr><td>${k+1}</td><td>${esc(i.title)}${i.author?" : "+esc(i.author):""}</td><td class="n">${i.qty} ${esc(i.unit)}</td><td>${SYM[i.currency]||""}</td><td class="n">${i.conv}</td><td class="n">${i.price}</td><td class="n">${money(i.price*i.conv*i.qty)}</td><td class="n">${i.disc}%</td><td class="n">${money(i.amount)}</td></tr>`).join("")}</table>
+ <p class="n">Total ${money(v.subtotal)}<br>${v.gstTotal?"GST "+money(v.gstTotal)+" (CGST "+money(v.gstTotal/2)+" + SGST "+money(v.gstTotal/2)+")<br>":""}Round off ${(v.roundOff||0).toFixed(2)}<br><b style="font-size:17px">Net payable ${money(v.total)}</b></p>
+ <p>(Rupees ${words(v.total)} Only)</p>
+ <p>Certified that publishers' price has been charged &amp; conversion rates are as per GOC: $ = Rs ${r.USD}, £ = Rs ${r.GBP}, € = Rs ${r.EUR}.<br>PAN No. ${SHOP.pan}<br>Payment by Bankers Cheque / Electronic fund transfer favouring "${SHOP.name}". ${SHOP.bank}</p>
+ <p class="n" style="margin-top:50px">For ${SHOP.name}<br><br>Manager</p><script>onload=()=>print()<\/script>`);w.document.close()}
+function words(n){n=Math.round(n);if(!n)return"Zero";
+ const o=["","One","Two","Three","Four","Five","Six","Seven","Eight","Nine","Ten","Eleven","Twelve","Thirteen","Fourteen","Fifteen","Sixteen","Seventeen","Eighteen","Nineteen"],t=["","","Twenty","Thirty","Forty","Fifty","Sixty","Seventy","Eighty","Ninety"];
+ const b=x=>x<20?o[x]:t[x/10|0]+(x%10?" "+o[x%10]:""),c=x=>(x>99?o[x/100|0]+" Hundred"+(x%100?" ":""):"")+(x%100?b(x%100):"");
+ let s="";[[1e7,"Crore"],[1e5,"Lakh"],[1e3,"Thousand"]].forEach(([q,k])=>{if(n>=q){s+=c(n/q|0)+" "+k+" ";n%=q}});
+ return(s+(n?c(n):"")).trim()}
+drawCart();loadBooks();
+</script>
+</body>
+</html>

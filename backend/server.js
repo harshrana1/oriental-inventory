@@ -1,19 +1,26 @@
-require('dotenv').config();
+require("dotenv").config();
 require("dns").setServers(["8.8.8.8", "1.1.1.1"]);
 const express = require("express");
-const mangoose = require("mongoose");
+const mongoose = require("mongoose");
+const cors = require("cors");
 
 const app = express();
+app.use(cors());
 app.use(express.json());
+
 app.get("/", (req, res) => {
-    res.send("Oreintal Inventory API is Running");
+  res.send("Oriental Inventory API is Running");
 });
-mangoose
-.connect(process.env.MONGO_URI)
-.then(() => {
+
+app.use("/api/books", require("./routes/books"));
+app.use("/api/invoices", require("./routes/invoices"));
+
+mongoose
+  .connect(process.env.MONGO_URI)
+  .then(() => {
     console.log("MongoDB Connected");
-    app.listen(process.env.PORT || 5000,() => {
-        console.log("server is running")
+    app.listen(process.env.PORT || 5000, () => {
+      console.log("server is running");
     });
-})
-.catch((err) => console.log("DB Error:", err.message));
+  })
+  .catch((err) => console.log("DB Error:", err.message));
